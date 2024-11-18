@@ -9,6 +9,7 @@ import subprocess
 import sys
 
 from contextlib import contextmanager
+import platform
 
 
 @contextmanager
@@ -23,10 +24,16 @@ def chdir(path):
         os.chdir(original_path)
 
 
+def is_windows() -> bool:
+    return platform.system().lower() == "windows"
+
+def get_npm_cmd() -> str:
+    return "npm.cmd" if is_windows() else "npm"
+
 def have_npm():
     try:
         cp = subprocess.run(
-            ["npm", "version"],
+            [get_npm_cmd(), "version"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=True
@@ -57,7 +64,7 @@ def run_npm_install():
 
     with chdir(jsdir):
         try:
-            cp = subprocess.run(["npm", "install"], check=True)
+            cp = subprocess.run([get_npm_cmd(), "install"], check=True)
             returncode = cp.returncode
         except FileNotFoundError:
             returncode = 1
