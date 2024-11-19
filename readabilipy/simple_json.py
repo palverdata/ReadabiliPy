@@ -11,6 +11,7 @@ from .simple_tree import simple_tree_from_html_string
 from .extractors import extract_date, extract_title
 from .simplifiers import normalise_text
 from .utils import run_npm_install
+from .models import ReadableArticle
 
 
 def have_node():
@@ -37,75 +38,76 @@ def have_node():
     return os.path.exists(node_modules)
 
 
-def simple_json_from_html_string(html, content_digests=False, node_indexes=False, use_readability=False):
+
+def simple_json_from_html_string(html, content_digests=False, node_indexes=False, use_readability=True) -> ReadableArticle:
     if use_readability and not have_node():
-        print("Warning: node executable not found, reverting to pure-Python mode. Install Node.js v10 or newer to use Readability.js.", file=sys.stderr)
+        print(
+            "Warning: node executable not found, reverting to pure-Python mode. "
+            "Install Node.js v10 or newer to use Readability.js.",
+            file=sys.stderr,
+        )
         use_readability = False
 
+    input_json = {}
+
     if use_readability:
-        # Write input HTML to temporary file so it is available to the node.js script
+        # Write input HTML to a temporary file for the Node.js script
         with tempfile.NamedTemporaryFile(delete=False, mode="w+", encoding="utf-8", prefix="readabilipy") as f_html:
             f_html.write(html)
-            f_html.close()
-        html_path = f_html.name
+            html_path = f_html.name
 
-        # Call Mozilla's Readability.js Readability.parse() function via node, writing output to a temporary file
         json_path = html_path + ".json"
-        jsdir = os.path.join(os.path.dirname(__file__), 'javascript')
+        jsdir = os.path.join(os.path.dirname(__file__), "javascript")
+
         try:
-            result = subprocess.run(
+            # Call Mozilla's Readability.js via Node.js
+            subprocess.run(
                 ["node", "ExtractArticle.js", "-i", html_path, "-o", json_path],
                 cwd=jsdir,
                 check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                universal_newlines=True)
+                universal_newlines=True,
+            )
+
+            # Read the output JSON
+            with open(json_path, "r", encoding="utf-8") as json_file:
+                input_json = json.load(json_file)
+
         except subprocess.CalledProcessError as e:
-            print(e.stderr)
+            print(f"Error calling Node.js script: {e.stderr}", file=sys.stderr)
             raise
+        finally:
+            # Clean up temporary files
+            if os.path.exists(json_path):
+                os.unlink(json_path)
+            if os.path.exists(html_path):
+                os.unlink(html_path)
 
-        # Read output of call to Readability.parse() from JSON file and return as Python dictionary
-        with open(json_path, "r", encoding="utf-8") as json_file:
-            input_json = json.load(json_file)
-
-        # Deleting files after processing
-        os.unlink(json_path)
-        os.unlink(f_html.name)
     else:
+        # Fallback: Pure-Python mode
         input_json = {
             "title": extract_title(html),
-            "date": extract_date(html),
-            "content": str(simple_tree_from_html_string(html))
+            "publishedTime": extract_date(html),
+            "content": str(simple_tree_from_html_string(html)),
         }
 
-    # Only keep the subset of Readability.js fields we are using (and therefore testing for accuracy of extraction)
-    # NB: Need to add tests for additional fields and include them when we look at packaging this wrapper up for PyPI
-    # Initialise output article to include all fields with null values
-    article_json = {
-        "title": None,
-        "byline": None,
-        "date": None,
-        "content": None,
-        "plain_content": None,
-        "plain_text": None
-    }
-    # Populate article fields from readability fields where present
-    if input_json:
-        if "title" in input_json and input_json["title"]:
-            article_json["title"] = input_json["title"]
-        if "byline" in input_json and input_json["byline"]:
-            article_json["byline"] = input_json["byline"]
-        if "date" in input_json and input_json["date"]:
-            article_json["date"] = input_json["date"]
-        if "content" in input_json and input_json["content"]:
-            article_json["content"] = input_json["content"]
-            article_json["plain_content"] = plain_content(article_json["content"], content_digests, node_indexes)
-            if use_readability:
-                article_json["plain_text"] = extract_text_blocks_js(article_json["plain_content"])
-            else:
-                article_json["plain_text"] = extract_text_blocks_as_plain_text(article_json["plain_content"])
+    # Populate and return the ReadableArticle dataclass
+    return ReadableArticle(
+        title=input_json.get("title"),
+        byline=input_json.get("byline"),
+        dir=input_json.get("dir"),
+        lang=input_json.get("lang"),
+        content=input_json.get("content"),
+        text_content=plain_content(input_json.get("content", ""), content_digests, node_indexes)
+        if "content" in input_json
+        else None,
+        length=len(input_json.get("content", "")) if input_json.get("content") else None,
+        excerpt=input_json.get("excerpt"),
+        site_name=input_json.get("siteName"),
+        published_time=input_json.get("publishedTime"),
+    )
 
-    return article_json
 
 
 def extract_text_blocks_js(paragraph_html):
