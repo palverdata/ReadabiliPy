@@ -11,7 +11,7 @@ from .simple_tree import simple_tree_from_html_string
 from .extractors import extract_date, extract_title
 from .simplifiers import normalise_text
 from .utils import run_npm_install
-from .models import ReadableArticle
+from .models.ReadableArticle import ReadableArticle
 
 
 def have_node():
