@@ -39,7 +39,7 @@ def have_node():
 
 
 
-def simple_json_from_html_string(html, content_digests=False, node_indexes=False, use_readability=True) -> ReadableArticle:
+def simple_json_from_html_string(html, content_digests=False, node_indexes=False, use_readability=True, timeout=None) -> ReadableArticle:
     if use_readability and not have_node():
         print(
             "Warning: node executable not found, reverting to pure-Python mode. "
@@ -68,6 +68,7 @@ def simple_json_from_html_string(html, content_digests=False, node_indexes=False
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 universal_newlines=True,
+                timeout=timeout,
             )
 
             # Read the output JSON
