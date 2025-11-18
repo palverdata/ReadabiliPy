@@ -39,7 +39,7 @@ def have_node():
 
 
 
-def simple_json_from_html_string(html, content_digests=False, node_indexes=False, use_readability=True, timeout=None) -> ReadableArticle:
+def simple_json_from_html_string(html, content_digests=False, node_indexes=False, use_readability=True, timeout=None, runtime="node") -> ReadableArticle:
     if use_readability and not have_node():
         print(
             "Warning: node executable not found, reverting to pure-Python mode. "
@@ -62,7 +62,7 @@ def simple_json_from_html_string(html, content_digests=False, node_indexes=False
         try:
             # Call Mozilla's Readability.js via Node.js
             subprocess.run(
-                ["node", "ExtractArticle.js", "-i", html_path, "-o", json_path],
+                [runtime, "ExtractArticle.js", "-i", html_path, "-o", json_path],
                 cwd=jsdir,
                 check=True,
                 stdout=subprocess.PIPE,
