@@ -40,7 +40,7 @@ function main() {
   console.log(`[${now()}] Creating readability object...`);
   const reader = new Readability(doc.window.document);
   console.log(`[${now()}] Parsing article...`);
-  const article = reader.parse();
+  let article = reader.parse();
 
   if (!article) {
     console.log(
