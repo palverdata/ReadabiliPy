@@ -4,6 +4,7 @@ import os
 import tempfile
 import subprocess
 import sys
+import functools
 
 from bs4 import BeautifulSoup
 from bs4.element import Comment, NavigableString, CData
@@ -14,6 +15,7 @@ from .utils import run_npm_install
 from .models.ReadableArticle import ReadableArticle
 
 
+@functools.lru_cache(maxsize=1)
 def have_node():
     """Check that we can run node and have a new enough version"""
     try:
