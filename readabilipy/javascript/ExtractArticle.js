@@ -41,6 +41,26 @@ function main() {
   const reader = new Readability(doc.window.document);
   console.log(`[${now()}] Parsing article...`);
   const article = reader.parse();
+
+  if (!article) {
+    console.log(
+      `[${now()}] Failed to parse article. Will produce empty output.`,
+    );
+
+    article = {
+      title: null,
+      content: null,
+      textContent: null,
+      length: null,
+      excerpt: null,
+      byline: null,
+      dir: null,
+      siteName: null,
+      lang: null,
+      publishedTime: null,
+    };
+  }
+
   console.log(`[${now()}] Article parsed with title: ${article.title}`);
   console.log(`[${now()}] Writing article to ${outFilePath}...`);
 
